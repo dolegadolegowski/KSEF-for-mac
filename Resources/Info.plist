@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>pl</string>
+	<key>CFBundleDisplayName</key>
+	<string>KSeF Faktury</string>
+	<key>CFBundleName</key>
+	<string>KSeF Faktury</string>
+	<key>CFBundleExecutable</key>
+	<string>KSeFFaktury</string>
+	<key>CFBundleIdentifier</key>
+	<string>pl.ksef.faktury</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.finance</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSSupportsAutomaticTermination</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Wizualizacja faktur z Krajowego Systemu e-Faktur. Dokumentem źródłowym pozostaje plik XML w KSeF.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Dostęp do programu Mail jest potrzebny wyłącznie do przygotowania wiadomości roboczej z zestawieniem faktur. Aplikacja nigdy nie wysyła wiadomości samodzielnie.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+</dict>
+</plist>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Aplikacja działa w piaskownicy. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+
+	<!-- Połączenia wychodzące wyłącznie do API KSeF. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+
+	<!-- Zapis wyników do katalogu wskazanego przez użytkownika. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+
+	<!-- Zapamiętanie wybranego katalogu między uruchomieniami. -->
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+
+	<!-- Utworzenie wiadomości roboczej w Mail.app (wariant alternatywny wobec pliku .eml). -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<key>com.apple.security.temporary-exception.apple-events</key>
+	<array>
+		<string>com.apple.mail</string>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,19 @@
+# Wyniki kompilacji
+.build/
+artifacts/
+*.o
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+
+# Pliki systemowe macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Katalogi Xcode (projekt buduje się skryptem, bez Xcode)
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/

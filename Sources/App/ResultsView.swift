@@ -9,7 +9,6 @@ struct InvoiceRow: Identifiable {
     var date: Date { invoice.issueDate ?? .distantPast }
     var dateText: String { invoice.issueDate.map { Fmt.isoDate($0) } ?? "—" }
     var number: String { invoice.invoiceNumber }
-    var ksefNumber: String { invoice.ksefNumber }
     var counterparty: String { invoice.counterparty.displayName }
     var net: Decimal { invoice.totalNet }
     var gross: Decimal { invoice.totalGross }
@@ -219,18 +218,12 @@ struct ResultsView: View {
                     }
                     .width(min: 130, ideal: 170)
 
-                    TableColumn("Numer KSeF", value: \.ksefNumber) { row in
-                        Text(row.ksefNumber)
-                            .font(.system(.caption, design: .monospaced))
-                            .lineLimit(1)
-                            .textSelection(.enabled)
-                    }
-                    .width(min: 180, ideal: 230)
-
+                    // Numer KSeF nie jest tu pokazywany — jest długi, a do pracy z zestawieniem
+                    // niepotrzebny. Widnieje na wizualizacji PDF i w podglądzie faktury.
                     TableColumn(counterpartyTitle, value: \.counterparty) { row in
                         Text(row.counterparty).lineLimit(1)
                     }
-                    .width(min: 150, ideal: 220)
+                    .width(min: 220, ideal: 380)
 
                     // Sortowanie po `Decimal` jest liczbowe, więc korekty ujemne
                     // i separatory tysięcy nie zaburzają kolejności.

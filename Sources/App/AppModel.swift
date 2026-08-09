@@ -24,11 +24,11 @@ enum ConnectionStatus: Equatable {
     }
 }
 
-/// Kroki przepływu pracy w oknie głównym.
+/// Stan okna głównego. Aplikacja startuje od razu na podglądzie miesiąca —
+/// wybór okresu odbywa się listą rozwijaną w nagłówku, nie osobnym krokiem.
 enum WorkflowStep: Int, Comparable {
-    case period = 1
-    case downloading = 2
-    case results = 3
+    case downloading = 1
+    case results = 2
 
     static func < (lhs: WorkflowStep, rhs: WorkflowStep) -> Bool { lhs.rawValue < rhs.rawValue }
 }
@@ -36,8 +36,10 @@ enum WorkflowStep: Int, Comparable {
 /// Model aplikacji: łączy ustawienia, klienta KSeF, parser, generator PDF i eksport wyników.
 @MainActor
 final class AppModel: ObservableObject {
-    @Published var step: WorkflowStep = .period
-    @Published var period: MonthPeriod = .previousMonth()
+    @Published var step: WorkflowStep = .results
+    @Published var period: MonthPeriod = .current()
+    /// Miesiące zapisane w pamięci aplikacji — oznaczane na liście rozwijanej.
+    @Published var storedPeriods: Set<MonthPeriod> = []
     @Published var connection: ConnectionStatus = .unknown
     @Published var progress: FetchProgress?
     @Published var invoiceSet: InvoiceSet?
@@ -117,7 +119,7 @@ final class AppModel: ObservableObject {
         Storage.purgeContexts(keeping: settings.normalizedNip)
         invoiceSet = nil
         pdfs = [:]
-        step = .period
+        step = .results
         connection = .unknown
         Task { await auth.reset() }
     }
@@ -211,17 +213,19 @@ final class AppModel: ObservableObject {
                 // od razu dostępne, bez ponownego pobierania z KSeF.
                 InvoiceCache.save(set: result.set, pdfs: result.pdfs)
                 materializeOutputs()
+                // Miesiąc dołącza do oznaczonych kropką na liście rozwijanej.
+                refreshStoredPeriods()
             } catch is CancellationError {
                 progress = nil
-                step = .period
+                step = .results
                 infoMessage = "Pobieranie przerwane. Dotychczasowa lokalna kopia pozostała nienaruszona."
             } catch let error as KsefError where error.errorDescription?.contains("przerwana") == true {
                 progress = nil
-                step = .period
+                step = .results
                 infoMessage = "Pobieranie przerwane."
             } catch {
                 progress = nil
-                step = .period
+                step = .results
                 showError("Pobieranie faktur nie powiodło się.", details: describe(error))
             }
         }
@@ -483,24 +487,59 @@ final class AppModel: ObservableObject {
         return (size > MailComposer.attachmentSizeWarningThreshold, size / (1024 * 1024))
     }
 
-    // MARK: - Przywracanie poprzedniej sesji
+    // MARK: - Wybór miesiąca
 
-    /// Wczytuje ostatnio pobrany miesiąc z magazynu aplikacji.
+    /// Lista miesięcy do wyboru: bieżący i trzy lata wstecz.
+    let selectableMonths = MonthPeriod.selectableRange()
+
+    /// Otwiera bieżący miesiąc zaraz po uruchomieniu aplikacji.
     ///
-    /// Dzięki temu po ponownym uruchomieniu faktury są od razu widoczne i nie trzeba
-    /// pobierać ich z KSeF jeszcze raz.
-    func restoreLastSession() {
-        guard settings.isNipValid, invoiceSet == nil else { return }
-        guard let period = InvoiceCache.availablePeriods(forNip: settings.normalizedNip).first,
-              let cached = InvoiceCache.load(nip: settings.normalizedNip, period: period) else { return }
+    /// Gdy miesiąc jest już w pamięci, faktury pojawiają się natychmiast, bez łączenia się
+    /// z KSeF. Gdy nie ma go jeszcze w pamięci, widok pozostaje pusty z zachętą do pobrania —
+    /// aplikacja nie odpytuje API bez decyzji użytkownika.
+    func openInitialMonth() {
+        refreshStoredPeriods()
+        guard settings.isNipValid else { return }
+        selectPeriod(.current())
+    }
 
+    /// Przełącza na wskazany miesiąc: wczytuje go z pamięci albo pokazuje pusty widok.
+    func selectPeriod(_ period: MonthPeriod) {
         self.period = period
+        errorMessage = nil
+        errorDetails = nil
+        selectedInvoice = nil
+        step = .results
+
+        guard settings.isNipValid,
+              let cached = InvoiceCache.load(nip: settings.normalizedNip, period: period) else {
+            invoiceSet = nil
+            pdfs = [:]
+            lastOutputDirectory = nil
+            infoMessage = nil
+            return
+        }
+
         invoiceSet = cached.set
         pdfs = cached.pdfs
-        step = .results
+        infoMessage = nil
         materializeOutputs()
         updateCompanyName()
-        logInfo("Przywrócono z magazynu miesiąc \(period.tag) (\(cached.set.all.count) faktur).")
+        logInfo("Otwarto z pamięci miesiąc \(period.tag) (\(cached.set.all.count) faktur).")
+    }
+
+    /// Odświeża zbiór miesięcy oznaczanych na liście jako pobrane.
+    func refreshStoredPeriods() {
+        guard settings.isNipValid else {
+            storedPeriods = []
+            return
+        }
+        storedPeriods = Set(InvoiceCache.availablePeriods(forNip: settings.normalizedNip))
+    }
+
+    /// Czy wskazany miesiąc jest już pobrany.
+    func isStored(_ period: MonthPeriod) -> Bool {
+        storedPeriods.contains(period)
     }
 
     // MARK: - Aktualizacje aplikacji

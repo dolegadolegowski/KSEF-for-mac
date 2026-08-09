@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Okno główne: wybór okresu, postęp pobierania i wyniki.
+/// Okno główne. Po uruchomieniu pokazuje podgląd bieżącego miesiąca;
+/// wcześniejsze okresy wybiera się listą rozwijaną w nagłówku.
 struct ContentView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var settings: AppSettings
@@ -14,7 +15,6 @@ struct ContentView: View {
 
             Group {
                 switch model.step {
-                case .period: periodStep
                 case .downloading: downloadingStep
                 case .results: ResultsView()
                 }
@@ -26,18 +26,17 @@ struct ContentView: View {
                 messages
             }
         }
-        .sheet(isPresented: $showingSettings) {
+        .sheet(isPresented: $showingSettings, onDismiss: {
+            // Po zmianie NIP-u lista miesięcy i zawartość podglądu mogą być inne.
+            model.refreshStoredPeriods()
+        }) {
             SettingsView(isPresentedAsSheet: true)
                 .environmentObject(model)
                 .environmentObject(settings)
         }
         .onAppear {
-            if !model.hasUsableConfiguration {
-                showingSettings = true
-            } else {
-                // Ostatnio pobrany miesiąc jest w pamięci aplikacji — pokazujemy go od razu.
-                model.restoreLastSession()
-            }
+            model.openInitialMonth()
+            if !model.hasUsableConfiguration { showingSettings = true }
             model.checkForUpdates(automatic: true)
         }
     }
@@ -60,17 +59,25 @@ struct ContentView: View {
 
             Spacer()
 
-            if model.step == .results {
-                Button("Nowy okres") {
-                    model.step = .period
-                }
-                .help("Wróć do wyboru miesiąca")
+            monthPicker
+
+            Button {
+                model.fetch(forceRefresh: model.cacheAvailable)
+            } label: {
+                Label(model.cacheAvailable ? "Pobierz ponownie" : "Pobierz",
+                      systemImage: "arrow.down.circle")
             }
+            .keyboardShortcut("r", modifiers: .command)
+            .disabled(model.isBusy || !model.hasUsableConfiguration)
+            .help(model.cacheAvailable
+                ? "Pobiera miesiąc z KSeF od nowa, zastępując dane w pamięci aplikacji"
+                : "Pobiera faktury za wybrany miesiąc z KSeF")
 
             Button {
                 showingSettings = true
             } label: {
                 Label("Ustawienia", systemImage: "gearshape")
+                    .labelStyle(.iconOnly)
             }
             .help("Ustawienia (⌘,)")
             .keyboardShortcut(",", modifiers: .command)
@@ -79,11 +86,29 @@ struct ContentView: View {
         .padding(.vertical, 12)
     }
 
+    /// Lista rozwijana z miesiącami. Pobrane okresy są oznaczone kropką,
+    /// żeby było widać, które otworzą się od razu, bez łączenia z KSeF.
+    private var monthPicker: some View {
+        Picker("Miesiąc", selection: Binding(
+            get: { model.period },
+            set: { model.selectPeriod($0) }
+        )) {
+            ForEach(model.selectableMonths, id: \.self) { period in
+                Text(model.isStored(period) ? "\(period.displayName)  ●" : period.displayName)
+                    .tag(period)
+            }
+        }
+        .labelsHidden()
+        .frame(width: 190)
+        .disabled(model.isBusy)
+        .help("Wybierz miesiąc rozliczeniowy. Kropka oznacza miesiąc zapisany w pamięci aplikacji.")
+    }
+
     private var contextLabel: String {
-        guard settings.isNipValid else { return "Uzupełnij NIP w ustawieniach" }
+        guard settings.isNipValid else { return "Uzupełnij NIP w ustawieniach (⌘,)" }
         let nip = "NIP \(Nip.formatted(settings.normalizedNip))"
         switch model.connection {
-        case .unknown: return "\(nip) · połączenie niesprawdzone"
+        case .unknown: return "\(nip) · \(settings.dateType.displayName.lowercased())"
         case .checking: return "\(nip) · sprawdzanie połączenia…"
         case .connected: return "\(nip) · połączono z KSeF"
         case .failed: return "\(nip) · problem z połączeniem"
@@ -99,72 +124,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Krok 1: okres
-
-    private var periodStep: some View {
-        VStack(spacing: 22) {
-            Spacer()
-
-            VStack(spacing: 6) {
-                Text("Wybierz miesiąc rozliczeniowy").font(.title2).bold()
-                Text("Aplikacja pobierze faktury wystawione i otrzymane za wskazany miesiąc.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 10) {
-                Picker("Miesiąc", selection: Binding(
-                    get: { model.period },
-                    set: { model.period = $0 }
-                )) {
-                    ForEach(MonthPeriod.selectableRange(), id: \.self) { period in
-                        Text(period.displayName).tag(period)
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 220)
-            }
-
-            Text("Kryterium przypisania do miesiąca: \(settings.dateType.displayName.lowercased()).")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 12) {
-                Button {
-                    model.fetch()
-                } label: {
-                    Label("Pobierz", systemImage: "arrow.down.circle")
-                        .frame(minWidth: 110)
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(model.isBusy || !model.hasUsableConfiguration)
-
-                if model.cacheAvailable {
-                    Button("Pobierz ponownie") {
-                        model.fetch(forceRefresh: true)
-                    }
-                    .help("Pomija lokalną kopię i pobiera dane z KSeF od nowa")
-                    .disabled(model.isBusy)
-                }
-
-                Button("Sprawdź połączenie") {
-                    model.checkConnection()
-                }
-                .disabled(model.isBusy || !settings.isNipValid)
-            }
-
-            if !model.hasUsableConfiguration {
-                Text("Uzupełnij NIP i token KSeF w ustawieniach (⌘,), aby pobrać faktury.")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-            }
-
-            Spacer()
-        }
-        .padding(30)
-    }
-
-    // MARK: - Krok 2: pobieranie
+    // MARK: - Pobieranie
 
     private var downloadingStep: some View {
         VStack(spacing: 20) {
@@ -188,7 +148,7 @@ struct ContentView: View {
             }
             .keyboardShortcut(.cancelAction)
 
-            Text("Przerwanie jest bezpieczne — lokalna kopia poprzednich pobrań pozostaje nienaruszona.")
+            Text("Przerwanie jest bezpieczne — faktury zapisane wcześniej pozostają nienaruszone.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

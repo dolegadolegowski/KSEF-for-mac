@@ -20,7 +20,13 @@ struct MonthPeriod: Equatable, Hashable, Codable {
         return c
     }()
 
-    /// Miesiąc poprzedzający bieżący — domyślny wybór przy starcie aplikacji.
+    /// Miesiąc bieżący — okres pokazywany po uruchomieniu aplikacji.
+    static func current(from date: Date = Date()) -> MonthPeriod {
+        let comps = calendar.dateComponents([.year, .month], from: date)
+        return MonthPeriod(year: comps.year!, month: comps.month!)
+    }
+
+    /// Miesiąc poprzedzający bieżący.
     static func previousMonth(from date: Date = Date()) -> MonthPeriod {
         let cal = calendar
         let startOfThisMonth = cal.date(from: cal.dateComponents([.year, .month], from: date))!

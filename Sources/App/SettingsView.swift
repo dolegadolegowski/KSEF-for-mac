@@ -303,7 +303,7 @@ struct SettingsView: View {
                     model.invoiceSet = nil
                     model.pdfs = [:]
                     model.lastOutputDirectory = nil
-                    model.step = .period
+                    model.step = .results
                     model.infoMessage = "Pobrane faktury zostały usunięte z pamięci aplikacji."
                 }
                 .disabled(!settings.isNipValid)

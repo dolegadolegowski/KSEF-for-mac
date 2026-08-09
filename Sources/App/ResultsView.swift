@@ -37,6 +37,75 @@ struct ResultsView: View {
     }
 
     var body: some View {
+        Group {
+            if model.invoiceSet == nil {
+                emptyState
+            } else {
+                content
+            }
+        }
+        .sheet(item: $model.selectedInvoice) { invoice in
+            InvoiceDetailView(invoice: invoice, pdfData: model.pdfs[invoice.ksefNumber])
+                .environmentObject(model)
+        }
+        .confirmationDialog("Załączniki przekraczają 20 MB",
+                            isPresented: $showingAttachmentChoice,
+                            titleVisibility: .visible) {
+            Button("Dołącz mimo to") { model.generateEmail(attachmentMode: .individual) }
+            Button("Dołącz jedno archiwum ZIP") { model.generateEmail(attachmentMode: .archive) }
+            Button("Bez załączników, z odnośnikiem do katalogu") { model.generateEmail(attachmentMode: .none) }
+            Button("Anuluj", role: .cancel) {}
+        } message: {
+            Text("Łączny rozmiar załączników to około \(model.attachmentsExceedThreshold().megabytes) MB. "
+                + "Część serwerów pocztowych odrzuca tak duże wiadomości.")
+        }
+    }
+
+    /// Widok miesiąca, którego nie ma jeszcze w pamięci aplikacji.
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "tray")
+                .font(.system(size: 42))
+                .foregroundStyle(.tertiary)
+
+            VStack(spacing: 6) {
+                Text(model.period.displayName)
+                    .font(.title2).bold()
+                if model.hasUsableConfiguration {
+                    Text("Ten miesiąc nie został jeszcze pobrany z KSeF.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Uzupełnij NIP i token KSeF w ustawieniach (⌘,), aby pobrać faktury.")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                }
+            }
+
+            if model.hasUsableConfiguration {
+                Button {
+                    model.fetch()
+                } label: {
+                    Label("Pobierz faktury za \(model.period.displayName)", systemImage: "arrow.down.circle")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(model.isBusy)
+
+                Text("Miesiące oznaczone kropką na liście są już w pamięci aplikacji "
+                    + "i otwierają się natychmiast.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(30)
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             toolbar
             Divider()
@@ -64,21 +133,6 @@ struct ResultsView: View {
                 .padding(20)
             }
         }
-        .sheet(item: $model.selectedInvoice) { invoice in
-            InvoiceDetailView(invoice: invoice, pdfData: model.pdfs[invoice.ksefNumber])
-                .environmentObject(model)
-        }
-        .confirmationDialog("Załączniki przekraczają 20 MB",
-                            isPresented: $showingAttachmentChoice,
-                            titleVisibility: .visible) {
-            Button("Dołącz mimo to") { model.generateEmail(attachmentMode: .individual) }
-            Button("Dołącz jedno archiwum ZIP") { model.generateEmail(attachmentMode: .archive) }
-            Button("Bez załączników, z odnośnikiem do katalogu") { model.generateEmail(attachmentMode: .none) }
-            Button("Anuluj", role: .cancel) {}
-        } message: {
-            Text("Łączny rozmiar załączników to około \(model.attachmentsExceedThreshold().megabytes) MB. "
-                + "Część serwerów pocztowych odrzuca tak duże wiadomości.")
-        }
     }
 
     // MARK: - Pasek narzędzi
@@ -87,7 +141,8 @@ struct ResultsView: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(results.period.displayName).font(.title3).bold()
-                Text("\(results.all.count) faktur · \(results.strategy.displayName) · pobrano \(Fmt.dateTime(results.fetchedAt))")
+                Text("\(results.all.count) faktur · wystawione \(results.issued.count), "
+                    + "otrzymane \(results.received.count) · pobrano \(Fmt.dateTime(results.fetchedAt))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

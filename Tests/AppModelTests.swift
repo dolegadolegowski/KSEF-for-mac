@@ -190,6 +190,62 @@ enum AppModelTests {
                 T.equal(restored.pdfs[invoice.ksefNumber]?.count, pdf.count, "zachowany plik PDF")
             }
 
+            T.test("startuje na bieżącym miesiącu i przełącza okresy z listy") {
+                defer { Storage.clearCache(forNip: testNip) }
+                Storage.clearCache(forNip: testNip)
+
+                // Do pamięci trafia jeden starszy miesiąc — bieżący pozostaje nietknięty.
+                let stored = MonthPeriod(year: 2026, month: 5)
+                var storedSet = InvoiceSet(period: stored, nip: testNip)
+                let invoice = try InvoiceParser.parse(xml: Data(Fixtures.fa3Standard.utf8),
+                                                      ksefNumber: "5260250274-20260515-0MAJ-01",
+                                                      direction: .issued)
+                storedSet.issued = [invoice]
+                InvoiceCache.save(set: storedSet, pdfs: [invoice.ksefNumber: PdfRenderer.render(invoice)])
+
+                let suiteName = "pl.ksef.faktury.testy-\(UUID().uuidString)"
+                try T.runAsync {
+                    await MainActor.run {
+                        let settings = AppSettings(defaults: UserDefaults(suiteName: suiteName)!)
+                        settings.nip = testNip
+                        let model = AppModel(settings: settings,
+                                             http: MockURLProtocol.makeHTTP(),
+                                             tokenProvider: { _ in "token" })
+
+                        // Po uruchomieniu otwiera się bieżący miesiąc.
+                        model.openInitialMonth()
+                        T.equal(model.period, MonthPeriod.current(), "okres pokazany po uruchomieniu")
+                        T.equal(model.step, .results, "aplikacja startuje na podglądzie miesiąca")
+                        T.isNil(model.invoiceSet,
+                                "bieżący miesiąc nie jest pobrany, więc widok pozostaje pusty")
+
+                        // Lista rozwijana oznacza miesiące zapisane w pamięci.
+                        T.expect(model.isStored(stored), "maj 2026 musi być oznaczony jako pobrany")
+                        T.expect(!model.isStored(MonthPeriod.current()),
+                                 "bieżący miesiąc nie jest jeszcze pobrany")
+                        T.expect(model.selectableMonths.first == MonthPeriod.current(),
+                                 "lista zaczyna się od bieżącego miesiąca")
+                        T.equal(model.selectableMonths.count, 36, "lista obejmuje trzy lata wstecz")
+
+                        // Wybór zapisanego miesiąca wczytuje go bez łączenia z KSeF.
+                        model.selectPeriod(stored)
+                        T.equal(model.period, stored, "wybrany okres")
+                        T.equal(model.invoiceSet?.issued.count, 1, "faktury wczytane z pamięci")
+                        T.equal(model.invoiceSet?.issued.first?.invoiceNumber, "FV/123/2026",
+                                "numer faktury z pamięci")
+
+                        // Powrót na miesiąc bez danych czyści podgląd, nie zostawiając poprzednich faktur.
+                        model.selectPeriod(MonthPeriod(year: 2026, month: 4))
+                        T.isNil(model.invoiceSet, "przełączenie na pusty miesiąc czyści podgląd")
+                        T.expect(model.pdfs.isEmpty, "PDF-y poprzedniego miesiąca nie mogą zostać")
+                    }
+                }
+
+                // Żadne z powyższych nie mogło odpytać KSeF.
+                T.expect(MockURLProtocol.requests(matching: "/invoices").isEmpty,
+                         "przeglądanie pamięci nie może wykonywać żądań do KSeF")
+            }
+
             T.test("zapis atomowy zostawia kopię zapasową i odtwarza dane") {
                 let directory = FileManager.default.temporaryDirectory
                     .appendingPathComponent("ksef-atomic-\(UUID().uuidString)", isDirectory: true)

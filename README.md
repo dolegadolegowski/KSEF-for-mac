@@ -104,21 +104,26 @@ Wybór realnie zmienia zawartość zestawienia, dlatego jest opisany także w ok
 
 ## Korzystanie
 
-**1. Wybór okresu.** Wskaż miesiąc (domyślnie poprzedni) i kliknij **Pobierz**. Jeśli miesiąc
-był już pobierany, dane wczytają się z pamięci aplikacji; **Pobierz ponownie** wymusza
-odświeżenie z KSeF.
+**1. Start.** Aplikacja otwiera się na podglądzie **bieżącego miesiąca**. Jeśli był już
+pobierany, faktury pojawiają się od razu — bez łączenia się z KSeF.
 
-**2. Pobieranie.** Pasek postępu pokazuje etapy: uwierzytelnianie, metadane obu kierunków,
-pobieranie dokumentów XML, przetwarzanie i generowanie PDF-ów. **Anuluj** bezpiecznie przerywa
-pracę — dotychczasowa pamięć aplikacji pozostaje nienaruszona.
+**2. Wybór miesiąca.** Lista rozwijana w nagłówku obejmuje bieżący miesiąc i trzy lata wstecz.
+Miesiące oznaczone **kropką** są w pamięci aplikacji i otwierają się natychmiast; pozostałe
+pokazują ekran z przyciskiem **Pobierz**. Przeglądanie zapisanych miesięcy nie wykonuje żadnych
+żądań do KSeF, więc nie zużywa limitu API.
 
-**3. Wyniki.** Dwie tabele: faktury wystawione i otrzymane. Każdą kolumnę można sortować,
+**3. Pobieranie.** Przycisk **Pobierz** (⌘R) ściąga wybrany miesiąc; dla miesiąca już zapisanego
+zmienia się w **Pobierz ponownie** i wymusza odświeżenie. Pasek postępu pokazuje etapy:
+uwierzytelnianie, metadane obu kierunków, pobieranie dokumentów XML, przetwarzanie i generowanie
+PDF-ów. **Anuluj** bezpiecznie przerywa pracę — zapisane wcześniej faktury pozostają nienaruszone.
+
+**4. Wyniki.** Dwie tabele: faktury wystawione i otrzymane. Każdą kolumnę można sortować,
 a kwoty sortują się liczbowo — również korekty z wartościami ujemnymi. Pod tabelami sumy netto,
 VAT i brutto osobno dla każdej waluty, niżej saldo sprzedaży i zakupów. Kliknięcie wiersza
 otwiera podgląd faktury z zakładkami **Wizualizacja** (PDF), **Wszystkie pola** (pełna lista pól
 dokumentu z filtrem) i **Surowy XML**.
 
-**4. E-mail.** Przycisk **Generuj e-mail** (⌘E) przygotowuje wiadomość z obiema tabelami
+**5. E-mail.** Przycisk **Generuj e-mail** (⌘E) przygotowuje wiadomość z obiema tabelami
 w treści, podsumowaniem zbiorczym i wszystkimi plikami PDF jako osobnymi załącznikami.
 Wiadomość otwiera się w kliencie pocztowym z wpisanym adresatem — pozostaje kliknąć **Wyślij**.
 **Aplikacja nigdy nie wysyła wiadomości samodzielnie.**
@@ -128,9 +133,9 @@ spakować je w jedno archiwum ZIP, czy wysłać wiadomość bez załączników, 
 
 ### Gdzie trafiają pliki
 
-Pobrane faktury zostają w pamięci aplikacji — nie trzeba nic zapisywać ręcznie i przy kolejnym
-uruchomieniu ostatni pobrany miesiąc pokazuje się od razu, bez łączenia się z KSeF. Struktura
-plików jest zwykłym katalogiem, który otwiera przycisk **Pokaż pliki**:
+Pobrane faktury zostają w pamięci aplikacji — nie trzeba nic zapisywać ręcznie, a raz pobrany
+miesiąc otwiera się później natychmiast. Struktura plików jest zwykłym katalogiem, który otwiera
+przycisk **Pokaż pliki**:
 
 ```
 KSeF_2026-07/
